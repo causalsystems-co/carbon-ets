@@ -61,6 +61,11 @@ def main() -> None:
     prices = pd.read_parquet(DATA / "prices_daily.parquet")
     drivers = pd.read_parquet(DATA / "emissions_drivers.parquet")
 
+    # if only the temperature-proxy is available, alias it to load_eu5_mw
+    # so downstream features ("load_eu5_yoy") still get built.
+    if "load_eu5_mw_proxy" in drivers.columns and "load_eu5_mw" not in drivers.columns:
+        drivers = drivers.rename(columns={"load_eu5_mw_proxy": "load_eu5_mw"})
+
     panel = prices.join(drivers, how="left").sort_index()
     panel = panel.ffill(limit=7)
     panel.to_parquet(DATA / "panel_daily.parquet")

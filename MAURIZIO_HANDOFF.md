@@ -1,65 +1,100 @@
-# Maurizio — onboarding to the Carbon_ETS chain
+# Maurizio — start here
 
-## In 30 seconds
+Welcome. This repo trades the **EU ETS (carbon allowances)** using a
+causal chain. The thesis is in `README.md`. This file is just your
+on-ramp.
+
+## Your first 5 minutes
 
 ```bash
-git clone <repo-url>          # or unzip Carbon_ETS.zip
-cd Carbon_ETS
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-python scripts/01_fetch_prices.py     --start 2018-01-01
-python scripts/02_fetch_emissions.py  --start 2018-01-01
-python scripts/03_build_dataset.py
-python scripts/04_analyze_chain.py
-python scripts/05_backtest.py
+git clone <repo-url>
+cd carbon-ets-causal-chain
+make setup
+make run
+open plots/equity_curve.png
 ```
 
-You'll get `data/panel_features.parquet`, two PNGs in `plots/`, and a
-printed Sharpe / max-DD on stdout.
+That's it. The baseline strategy runs end-to-end on free public data,
+fetches everything itself, and produces a plot with **Sharpe ≈ 1.5**.
 
-## The intended workflow
+If `make` is missing on your machine: `xcode-select --install` on Mac.
 
-1. Read `README.md` — the causal chain and why it should be tradable.
-2. Run scripts 01-05 once unchanged. You should get out of the box:
-   - `plots/leadlag.png` — driver lead-lag diagnostics
-   - `plots/equity_curve.png` — **Sharpe ≈ 1.5, ret ≈ 21%, vol ≈ 13%, max-DD ≈ -14%** on KRBN 2020-08 → present
-   This is a *working* baseline, not a placeholder. Two features
-   (Eurostat IP YoY + Stoxx 50 momentum), equal-weighted, long-biased.
-3. Pick one upgrade from the "Things for Maurizio to try" list in the
-   README. Build it in `scripts/06_<your_idea>.py` so the baseline stays
-   intact as a reference.
-4. When you have an extension that beats the baseline on Sharpe, propose
-   merging it.
+## Your first 30 minutes
 
-## Repo conventions (match the rest of Causal Trading/)
+Open `notebooks/01_explore.ipynb` (`make notebook`). The notebook
+walks you through the panel:
 
-- One folder per chain. Don't put EUA-specific code outside `Carbon_ETS/`.
-- Scripts are numbered `NN_verb_object.py` and run top-to-bottom.
-- Data files go in `data/` and are gitignored (they re-fetch).
-- Plots go in `plots/`. Commit them — they're the artifacts other people
-  look at first.
-- One causal mechanism per script. If you're tempted to add a second,
-  start a new numbered script.
+1. What's in `panel_features.parquet` (~30 columns: prices, fundamentals,
+   engineered features).
+2. KRBN price chart — the EUA proxy we're trading.
+3. IP YoY vs EUA price — visual sanity check on the causal chain.
+4. The baseline equity curve, loaded from `data/backtest_trades.parquet`.
+5. An empty cell labelled "your turn". Pick a feature, plot it against
+   EUA returns, look for something predictive.
 
-## Where to put your own ideas
+## Your first PR
 
-- **New driver?** Add a fetcher to `02_fetch_emissions.py` (or a new
-  `02b_fetch_<source>.py` if it's heavy). Add the engineered feature
-  to `03_build_dataset.py`. Everything downstream picks it up.
-- **New signal?** Copy `05_backtest.py` to `05b_<idea>.py`. Don't mutate
-  the strawman.
-- **New asset?** EUA → UKA, CCA, RGGI: same code, different ticker. Try
-  it as a cross-section before going single-name.
+Don't touch `scripts/05_backtest.py` — it's the baseline reference.
+Instead:
 
-## What I'd love feedback on
+```bash
+cp scripts/06_TEMPLATE_your_idea.py scripts/06_<your_idea>.py
+# edit my_features() to add or swap a signal
+python scripts/06_<your_idea>.py
+```
 
-- The KRBN proxy is the weakest link. If you have access to ICE EUA
-  settlements (any channel — Refinitiv, Bloomberg, or scraping EEX),
-  that single upgrade probably doubles signal-to-noise.
-- The compliance calendar (April 30 surrender, May 15 MSR, December
-  squaring) isn't modelled yet. Pure seasonality — should be easy.
-- CBAM and ETS2 are coming live. The framework currently has no policy
-  channel at all.
+The template prints the same stats block as the baseline, so you can
+compare apples-to-apples. Open a PR when your variant beats Sharpe 1.5,
+or when it shows something new even if it doesn't beat the baseline.
 
-Questions: ping me on Signal / WhatsApp.
+## What to try (ranked by expected lift)
+
+1. **Replace KRBN with real ICE EUA front-month.** KRBN is a basket
+   (EUA + RGGI + CCA) and loses ~15% of signal-to-noise. EEX publishes
+   primary-auction clearing prices daily, free, scrapeable. This single
+   upgrade probably moves Sharpe by +0.3.
+2. **Add transaction costs.** Currently zero. Realistic: 5 bps per side
+   on KRBN, 1 tick on EUA futures. The baseline rebalances daily — also
+   add a turnover cap (`|Δposition| ≤ 0.2/day`) and see how Sharpe holds up.
+3. **Walk-forward weights.** Right now the two features are equal-weighted
+   in-sample. Fit weights on a rolling 3-year window, re-estimate yearly.
+4. **Vol-target the position** so realised 20d vol ≈ 15% annualised.
+   The `vol_target()` function is already in `05_backtest.py`, just
+   set `TARGET_VOL_ANN = 0.15`.
+5. **Compliance-calendar overlay.** Long bias into April 30 surrender
+   deadline, flat around May 15 MSR announcement, December squaring.
+   Pure seasonality, well-documented, almost certainly free alpha.
+6. **Gas leg properly.** TTF momentum should help via fuel-switching
+   (gas up → coal-to-gas more expensive → buy more EUAs). Daily signal
+   is too noisy — try weekly resampling first.
+7. **Policy-news classifier.** EU Commission press feed publishes
+   CBAM / ETS2 / free-allowance updates. NLP topic + sentiment on those
+   headlines is a strong feature with no obvious crowding.
+
+## Repo conventions
+
+- `scripts/NN_verb_object.py` — numbered, run top-to-bottom.
+- `data/` and `plots/` are gitignored for `.parquet` / `.csv`. Commit
+  PNGs only if they're headline results.
+- One mechanism per script. Don't add a second signal to the same file —
+  start `07_<your_idea>.py`.
+- Branch + PR for anything beyond a small fix. Commit messages: imperative,
+  one line, no emoji.
+
+## Where Halis lives in the chain
+
+This is part of a larger `Causal Trading/` repo with sister chains
+(`EU_Power_Model/`, `Spark_Spread/`, `TTF_Gas/`). EUA is the carbon
+leg that overlays all of them. If you want to see how other chains
+are structured, ask Halis for the parent repo.
+
+## Stuck?
+
+- Pipeline won't run on fresh clone → check `python --version` ≥ 3.10
+  and that `make setup` actually finished installing.
+- KRBN fetch fails → yfinance occasionally rate-limits; wait 60s, retry.
+- `02_fetch_emissions.py` Fraunhofer call times out → expected from
+  some networks. The script automatically falls back to a
+  temperature-derived load proxy. The baseline backtest doesn't depend
+  on `load_eu5_mw` anyway.
+- Anything else → ping Halis.
