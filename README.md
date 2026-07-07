@@ -1,7 +1,9 @@
 # carbon-ets
 
+[![PyPI version](https://img.shields.io/pypi/v/carbon-ets)](https://pypi.org/project/carbon-ets/)
 [![CI](https://github.com/causalsystems-co/carbon-ets/actions/workflows/ci.yml/badge.svg)](https://github.com/causalsystems-co/carbon-ets/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://pypi.org/project/carbon-ets/)
+[![Downloads](https://img.shields.io/pypi/dm/carbon-ets)](https://pypi.org/project/carbon-ets/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/causalsystems-co/carbon-ets/blob/main/examples/quickstart.ipynb)
 
@@ -108,11 +110,16 @@ Issues and pull requests welcome, especially:
 - **Method extensions** — regime-switching alternatives, structural VAR, natural experiments around MSR events
 - **Cross-market ports** — California CCA (CARB), UK ETS, RGGI applications of the same architecture
 
+## Authors
+
+- **Halis Yarim** — Causal Systems / Yarim Trade UG, Berlin
+- **Maurizio Raina** — Rotterdam
+
 ## Citing
 
 If you use this in published work, please cite:
 
-> Causal Systems (2026). *Factories to carbon: a demand-side model of EU allowance prices.* CS/RES/05.
+> Yarim, H., & Raina, M. (2026). *Factories to carbon: a demand-side model of EU allowance prices.* Causal Systems, CS/RES/05.
 > https://causalsystems.co/research/factories-to-carbon
 
 ## License

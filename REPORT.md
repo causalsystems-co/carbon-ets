@@ -52,4 +52,4 @@ Everything in this piece is reproducible. The pipeline that produced every figur
 
 ---
 
-Causal *Systems* · CS/RES/05 · Sources: EEX primary auctions (2012–2026), Eurostat SDMX (industrial production), Yahoo Finance (equities), Open-Meteo (weather), European Commission MSR Communications C(2017) 3228 through OJ C_202602957.
+Causal *Systems* · CS/RES/05 · By Halis Yarim and Maurizio Raina · Sources: EEX primary auctions (2012–2026), Eurostat SDMX (industrial production), Yahoo Finance (equities), Open-Meteo (weather), European Commission MSR Communications C(2017) 3228 through OJ C_202602957.

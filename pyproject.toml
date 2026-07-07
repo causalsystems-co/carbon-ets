@@ -10,6 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
+    {name = "Halis Yarim", email = "hello@causalsystems.co"},
+    {name = "Maurizio Raina"},
+]
+maintainers = [
     {name = "Causal Systems", email = "hello@causalsystems.co"},
 ]
 keywords = ["carbon", "emissions", "EU ETS", "EUA", "climate", "energy economics"]
