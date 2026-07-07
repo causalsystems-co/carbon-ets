@@ -1,0 +1,2 @@
+[console_scripts]
+carbon-ets-tnac = carbon_ets.tnac:cli

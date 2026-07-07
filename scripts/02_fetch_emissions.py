@@ -25,6 +25,7 @@ Output: data/emissions_drivers.parquet
 from __future__ import annotations
 
 import argparse
+import io
 from pathlib import Path
 
 import pandas as pd
@@ -35,17 +36,48 @@ DATA = ROOT / "data"
 DATA.mkdir(exist_ok=True)
 
 FRAUNHOFER_LOAD = "https://api.energy-charts.info/total_power"
-EUROSTAT_IP = (
+# Eurostat: try SDMX-CSV (needs an Accept header), fall back to legacy JSON.
+EUROSTAT_SDMX = (
+    "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/"
+    "sts_inpr_m/M.SCA.I21.B-D.EA19"
+)
+EUROSTAT_JSON = (
     "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/"
     "sts_inpr_m?format=JSON&geo=EA19&s_adj=SCA&unit=I21&nace_r2=B-D"
 )
 OPEN_METEO = "https://archive-api.open-meteo.com/v1/archive"
+# Fraunhofer renamed/removed several country endpoints — try uppercase first.
 COUNTRIES = ["de", "fr", "it", "es", "pl"]
 TIMEOUT = 20
 
 
 def fetch_eurostat_ip() -> pd.DataFrame:
-    r = requests.get(EUROSTAT_IP, timeout=TIMEOUT)
+    """EA19 industrial production (NACE B-D, seasonally adjusted, 2021=100).
+
+    Tries the SDMX-CSV endpoint first (live vintage, freshest data),
+    then falls back to the legacy JSON-stat endpoint if SDMX 406s.
+    """
+    # 1) SDMX-CSV — requires explicit Accept header.
+    try:
+        r = requests.get(
+            EUROSTAT_SDMX,
+            headers={"Accept": "text/csv"},
+            params={"format": "SDMX_CSV"},
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+        df = pd.read_csv(io.StringIO(r.text))
+        if "TIME_PERIOD" in df.columns and "OBS_VALUE" in df.columns:
+            df = df.rename(columns={"TIME_PERIOD": "date", "OBS_VALUE": "ip_ea19"})
+            df = df[["date", "ip_ea19"]].copy()
+            df["date"] = pd.to_datetime(df["date"], format="%Y-%m", errors="coerce")
+            df = df.dropna(subset=["date"]).set_index("date").sort_index()
+            return df.resample("D").ffill()
+    except Exception as e:
+        print(f"  SDMX failed ({e}); falling back to JSON-stat")
+
+    # 2) Fallback: legacy JSON-stat endpoint.
+    r = requests.get(EUROSTAT_JSON, timeout=TIMEOUT)
     r.raise_for_status()
     j = r.json()
     idx = j["dimension"]["time"]["category"]["index"]
@@ -90,10 +122,16 @@ def fetch_weather(start: str, end: str) -> pd.DataFrame:
 
 
 def fetch_load(country: str, start: str, end: str) -> pd.DataFrame:
-    """Daily mean MW from Fraunhofer. Can be slow — short timeout."""
-    params = {"country": country, "start": start, "end": end}
-    r = requests.get(FRAUNHOFER_LOAD, params=params, timeout=15,
+    """Daily mean MW from Fraunhofer. Tries lowercase, then uppercase
+    country code — Fraunhofer's API changed casing on some markets."""
+    params_lo = {"country": country.lower(), "start": start, "end": end}
+    r = requests.get(FRAUNHOFER_LOAD, params=params_lo, timeout=15,
                      headers={"User-Agent": "causal-trading/0.1"})
+    if r.status_code == 404:
+        # retry uppercase
+        params_up = {"country": country.upper(), "start": start, "end": end}
+        r = requests.get(FRAUNHOFER_LOAD, params=params_up, timeout=15,
+                         headers={"User-Agent": "causal-trading/0.1"})
     r.raise_for_status()
     j = r.json()
     if "xAxisValues" not in j or not j.get("series"):

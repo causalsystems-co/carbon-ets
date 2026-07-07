@@ -24,7 +24,7 @@ Thank you for considering a contribution. This is a small, quality-first project
 ## Development setup
 
 ```bash
-git clone https://github.com/causalsystems/carbon-ets
+git clone https://github.com/causalsystems-co/carbon-ets
 cd carbon-ets
 pip install -e ".[dev,all]"
 pytest tests/

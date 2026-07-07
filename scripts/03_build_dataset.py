@@ -26,10 +26,23 @@ def engineer(df: pd.DataFrame) -> pd.DataFrame:
     f = df.copy()
 
     # log returns
-    for c in ["carbon_proxy_krbn", "carbon_proxy_grn", "ttf_gas_eur_mwh",
-              "stoxx50", "wti_usd_bbl"]:
+    for c in ["eua_eur_tco2", "carbon_proxy_krbn", "carbon_proxy_grn",
+              "ttf_gas_eur_mwh", "stoxx50", "wti_usd_bbl"]:
         if c in f:
             f[f"r_{c}"] = np.log(f[c]).diff()
+
+    # MSR-derived features (if TNAC merged)
+    if "msr_tightness" in f:
+        # Sign convention: LOW msr_tightness = tight supply = bullish EUA.
+        # We negate so higher z_msr_supply_bull → bullish signal.
+        f["z_msr_supply_bull"] = -f["msr_tightness"].rolling(504).apply(
+            lambda x: (x.iloc[-1] - x.mean()) / x.std() if x.std() else 0
+        )
+        # 1-year delta in TNAC (negative = tightening = bullish)
+        f["tnac_delta_1y"] = f["tnac"] - f["tnac"].shift(252)
+        f["z_tnac_tightening"] = -f["tnac_delta_1y"].rolling(504).apply(
+            lambda x: (x.iloc[-1] - x.mean()) / x.std() if x.std() else 0
+        )
 
     # demand-side aggregate
     load_cols = [c for c in f.columns if c.startswith("load_") and c.endswith("_mw")]
@@ -61,8 +74,31 @@ def main() -> None:
     prices = pd.read_parquet(DATA / "prices_daily.parquet")
     drivers = pd.read_parquet(DATA / "emissions_drivers.parquet")
 
+    # Prefer real EUA settlement (from 01b_fetch_eua_auctions.py) when present.
+    # Falls back to KRBN proxy if the EEX file isn't there yet.
+    eua_path = DATA / "eua_daily.parquet"
+    if eua_path.exists():
+        eua = pd.read_parquet(eua_path)
+        prices = prices.join(eua, how="left")
+        print(f"  using real EEX EUA auction prices ({len(eua)} rows, "
+              f"{eua.index.min().date()} → {eua.index.max().date()})")
+    else:
+        print("  no eua_daily.parquet found — using KRBN proxy")
+
+    # Merge annual TNAC / MSR data if 02c has been run.
+    # TNAC is published every May 15 of year N+1 for year N, so we ffill from
+    # each May-15 publication date rather than the year-end index.
+    tnac_path = DATA / "tnac_annual.parquet"
+    if tnac_path.exists():
+        tnac = pd.read_parquet(tnac_path)
+        # index at year-end → shift to the following May 15 (public release)
+        tnac.index = tnac.index + pd.DateOffset(months=4, days=15)
+        prices = prices.join(tnac[["tnac", "msr_tightness"]], how="left")
+        prices[["tnac", "msr_tightness"]] = prices[["tnac", "msr_tightness"]].ffill()
+        print(f"  merged TNAC/MSR ({len(tnac)} annual obs, "
+              f"ffilled from May-15 release dates)")
+
     # if only the temperature-proxy is available, alias it to load_eu5_mw
-    # so downstream features ("load_eu5_yoy") still get built.
     if "load_eu5_mw_proxy" in drivers.columns and "load_eu5_mw" not in drivers.columns:
         drivers = drivers.rename(columns={"load_eu5_mw_proxy": "load_eu5_mw"})
 

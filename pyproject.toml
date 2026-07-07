@@ -44,7 +44,7 @@ all = ["yfinance>=0.2.40", "curl_cffi>=0.7", "jupyterlab>=4.0", "ipykernel>=6.29
 
 [project.urls]
 Homepage = "https://causalsystems.co/research/factories-to-carbon"
-Repository = "https://github.com/causalsystems/carbon-ets"
+Repository = "https://github.com/causalsystems-co/carbon-ets"
 Documentation = "https://causalsystems.co/research"
 
 [project.scripts]

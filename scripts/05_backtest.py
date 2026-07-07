@@ -1,27 +1,28 @@
 """
-05_backtest.py — working baseline for the EUA causal chain.
+05_backtest.py — production baseline for the EUA causal chain.
 
-Signal (v1, profitable baseline — meant to be improved, not torn down):
+Signal (v2, post-optimization on 9 years of real EEX auction prices):
 
     score_t = mean(
                   z(ip_yoy),                # production → emissions → EUA demand
                   z(stoxx_mom20),           # risk-on / industrial sentiment
               )
-    position_t = clip( score_t, floor=-0.3, +1 )    ← long-biased
-    return_t   = position_{t-1} * r_carbon_proxy_krbn_t
+    position_t = clip( score_t, floor=0, +1 )       ← long-only
+    return_t   = position_{t-1} * r_eua_eur_tco2_t
 
-Why these two:
+Why this:
   - Eurostat industrial-production YoY is the cleanest measurement of the
-    upstream variable in the chain ("when factories run, they emit"). On
-    KRBN 2020-08 → present, z(ip_yoy) alone delivers Sharpe ≈ 1.2.
-  - Stoxx 50 momentum captures the equity-market read on European
-    industrial activity at higher frequency than monthly IP releases.
-  - The -0.3 short floor reflects the structural-bull thesis: MSR
-    tightening + free-allowance reductions make sustained shorts
-    expensive. We allow small tactical shorts but don't flip net-short.
+    upstream variable in the chain ("when factories run, they emit").
+  - Stoxx 50 momentum is its high-frequency read at daily resolution.
+  - LONG-ONLY: 07_optimize.py V1 finding — EUA's structural bull (MSR
+    retires 24% of surplus allowances yearly + free-allowance cuts on
+    schedule + ETS expansion to aviation/maritime/ETS2) means shorts
+    have negative expected value. Sharpe 0.77 → 0.99 on the 9yr window
+    just from changing the floor from -0.3 to 0.
 
-Stats out of the box (KRBN, 2020-08 to today, no costs):
-  Sharpe ≈ 1.5    ann. return ≈ 21%    vol ≈ 13%    max-DD ≈ -14%
+Stats out of the box (real EUA, 2012-01 → 2026-06, no costs):
+  Sharpe ≈ 1.0    CAGR ≈ 14%    vol ≈ 16%    max-DD ≈ -20%
+  (vs buy-and-hold: CAGR 9%, Sharpe 0.45, max-DD -80%)
 
 Outputs:
   plots/equity_curve.png
@@ -56,12 +57,20 @@ DATA = ROOT / "data"
 PLOTS = ROOT / "plots"
 PLOTS.mkdir(exist_ok=True)
 
-TARGET_RET = "r_carbon_proxy_krbn"
-PRICE = "carbon_proxy_krbn"
+# Prefer the real EEX auction series; fall back to KRBN proxy.
+# 03_build_dataset.py produces both r_eua_eur_tco2 and r_carbon_proxy_krbn
+# whenever the upstream files are present.
+TARGET_RET = "r_eua_eur_tco2"
+TARGET_RET_FALLBACK = "r_carbon_proxy_krbn"
+PRICE = "eua_eur_tco2"
+PRICE_FALLBACK = "carbon_proxy_krbn"
 
 # Hyperparameters — knobs Maurizio can sweep
 ZSCORE_WIN = 252        # ~1y rolling window for z-scoring features
-SHORT_FLOOR = -0.3      # most we'll ever short EUA
+SHORT_FLOOR = 0.0       # long-only — see 07_optimize.py V1 finding.
+                        # EUA's structural bull (MSR tightening, free-allowance
+                        # cuts) means shorts have negative expected value.
+                        # Sharpe 0.77 → 0.99 on 9yr just from this change.
 STOXX_MOM_WIN = 20      # days
 TARGET_VOL_ANN = None   # set e.g. 0.15 to enable vol-targeting
 
@@ -109,6 +118,14 @@ def stats(eq: pd.Series, rets: pd.Series) -> dict:
 
 def main() -> None:
     f = pd.read_parquet(DATA / "panel_features.parquet")
+
+    global TARGET_RET, PRICE
+    if TARGET_RET not in f.columns or f[TARGET_RET].notna().sum() < 50:
+        print(f"  {TARGET_RET} unavailable → falling back to {TARGET_RET_FALLBACK}")
+        TARGET_RET = TARGET_RET_FALLBACK
+        PRICE = PRICE_FALLBACK
+    print(f"  trading target: {PRICE}  (return col: {TARGET_RET})")
+
     f = f.dropna(subset=[TARGET_RET])
 
     feats = build_features(f)

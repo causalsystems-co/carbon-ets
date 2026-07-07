@@ -21,8 +21,13 @@ setup:
 
 fetch:
 	$(PY) scripts/01_fetch_prices.py     --start $(START)
+	$(PY) scripts/01b_fetch_eua_auctions.py
 	$(PY) scripts/02_fetch_emissions.py  --start $(START)
 	$(PY) scripts/03_build_dataset.py
+
+# fetch only the long-history EUA series (~13 years, EEX auctions)
+fetch-eua:
+	$(PY) scripts/01b_fetch_eua_auctions.py
 
 analyse:
 	$(PY) scripts/04_analyze_chain.py

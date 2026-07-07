@@ -1,9 +1,56 @@
+Metadata-Version: 2.4
+Name: carbon-ets
+Version: 0.1.0
+Summary: Open, reproducible pipeline for EU Emissions Trading System analysis from free public data
+Author-email: Causal Systems <hello@causalsystems.co>
+License: MIT
+Project-URL: Homepage, https://causalsystems.co/research/factories-to-carbon
+Project-URL: Repository, https://github.com/causalsystems/carbon-ets
+Project-URL: Documentation, https://causalsystems.co/research
+Keywords: carbon,emissions,EU ETS,EUA,climate,energy economics
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pandas>=2.0
+Requires-Dist: numpy>=1.24
+Requires-Dist: pyarrow>=14.0
+Requires-Dist: openpyxl>=3.1
+Requires-Dist: python-calamine>=0.2
+Requires-Dist: requests>=2.31
+Requires-Dist: matplotlib>=3.7
+Requires-Dist: statsmodels>=0.14
+Requires-Dist: scikit-learn>=1.3
+Requires-Dist: scipy>=1.10
+Provides-Extra: yfinance
+Requires-Dist: yfinance>=0.2.40; extra == "yfinance"
+Requires-Dist: curl_cffi>=0.7; extra == "yfinance"
+Provides-Extra: notebook
+Requires-Dist: jupyterlab>=4.0; extra == "notebook"
+Requires-Dist: ipykernel>=6.29; extra == "notebook"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: black>=24.0; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
+Provides-Extra: all
+Requires-Dist: yfinance>=0.2.40; extra == "all"
+Requires-Dist: curl_cffi>=0.7; extra == "all"
+Requires-Dist: jupyterlab>=4.0; extra == "all"
+Requires-Dist: ipykernel>=6.29; extra == "all"
+Dynamic: license-file
+
 # carbon-ets
 
-[![CI](https://github.com/causalsystems-co/carbon-ets/actions/workflows/ci.yml/badge.svg)](https://github.com/causalsystems-co/carbon-ets/actions/workflows/ci.yml)
+[![CI](https://github.com/causalsystems/carbon-ets/actions/workflows/ci.yml/badge.svg)](https://github.com/causalsystems/carbon-ets/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://pypi.org/project/carbon-ets/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/causalsystems-co/carbon-ets/blob/main/examples/quickstart.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/causalsystems/carbon-ets/blob/main/examples/quickstart.ipynb)
 
 Open, reproducible pipeline for **EU Emissions Trading System** (EU ETS) analysis from free public data.
 
@@ -45,7 +92,7 @@ pip install carbon-ets[all]         # everything including Jupyter
 Or from source:
 
 ```bash
-git clone https://github.com/causalsystems-co/carbon-ets
+git clone https://github.com/causalsystems/carbon-ets
 cd carbon-ets
 pip install -e .[all]
 ```
