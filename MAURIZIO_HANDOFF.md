@@ -14,8 +14,11 @@ make run
 open plots/equity_curve.png
 ```
 
-That's it. The baseline strategy runs end-to-end on free public data,
-fetches everything itself, and produces a plot with **Sharpe ≈ 1.5**.
+That's it. The baseline strategy runs end-to-end on free public data
++ EEX auction prices 2012-present, and produces a plot with
+**Sharpe ≈ 1.0, CAGR ≈ 14%, MaxDD ≈ -20%** over 9 years of real EUA.
+Buy-and-hold over the same period: Sharpe 0.45, MaxDD -80%. Strategy
+adds 5% to annual return and cuts drawdowns by 4x.
 
 If `make` is missing on your machine: `xcode-select --install` on Mac.
 

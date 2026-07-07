@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carbon-ets"
+version = "0.1.0"
+description = "Open, reproducible pipeline for EU Emissions Trading System analysis from free public data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Causal Systems", email = "hello@causalsystems.co"},
+]
+keywords = ["carbon", "emissions", "EU ETS", "EUA", "climate", "energy economics"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyarrow>=14.0",
+    "openpyxl>=3.1",
+    "python-calamine>=0.2",
+    "requests>=2.31",
+    "matplotlib>=3.7",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.3",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+yfinance = ["yfinance>=0.2.40", "curl_cffi>=0.7"]
+notebook = ["jupyterlab>=4.0", "ipykernel>=6.29"]
+dev = ["pytest>=8.0", "black>=24.0", "ruff>=0.5"]
+all = ["yfinance>=0.2.40", "curl_cffi>=0.7", "jupyterlab>=4.0", "ipykernel>=6.29"]
+
+[project.urls]
+Homepage = "https://causalsystems.co/research/factories-to-carbon"
+Repository = "https://github.com/causalsystems/carbon-ets"
+Documentation = "https://causalsystems.co/research"
+
+[project.scripts]
+carbon-ets-tnac = "carbon_ets.tnac:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["carbon_ets*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "network: requires internet access",
+    "slow: slow test (>10s)",
+]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]

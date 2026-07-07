@@ -1,148 +1,124 @@
-# Carbon_ETS — EU ETS (EUA) Causal Chain
+# carbon-ets
 
-Sister project to `EU_Power_Model/`, `Spark_Spread/`, `TTF_Gas/`.
+[![CI](https://github.com/causalsystems/carbon-ets/actions/workflows/ci.yml/badge.svg)](https://github.com/causalsystems/carbon-ets/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://pypi.org/project/carbon-ets/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/causalsystems/carbon-ets/blob/main/examples/quickstart.ipynb)
 
-EU Allowances (EUAs) are the most policy-driven major commodity in Europe.
-Price is set by the intersection of *capped supply* and *demand from regulated
-emitters*. Demand moves with industrial production, electricity generation
-mix, and weather. Supply moves with auction calendars and Market Stability
-Reserve (MSR) rules. Policy news (CBAM, ETS2, free-allowance changes)
-re-prices the curve in seconds.
+Open, reproducible pipeline for **EU Emissions Trading System** (EU ETS) analysis from free public data.
 
-This makes EUA an excellent causal-chain candidate: the upstream drivers
-(production, electricity, weather, fuel switching, policy) all publish
-*before or independently* of the price, on schedules that don't depend on
-the market.
+Everything runs on published, non-paywalled sources: EEX primary-auction clearing prices, Eurostat industrial production, European Commission MSR Communications, and Open-Meteo weather. **Free replacement for ~€20-50k/year of paid EU ETS data infrastructure.**
 
-## The mechanism in one sentence
+Companion code to Causal Systems research report [Factories to carbon](https://causalsystems.co/research/factories-to-carbon).
 
-When industrial output and thermal-power generation rise, compliance buyers
-must purchase more EUAs to cover emissions; when output falls (recession,
-mild weather, gas-to-renewables switching), compliance demand collapses
-and the EUA curve sells off — and most of the upstream signal publishes
-days to weeks before the EUA price reacts.
+**Try it in 30 seconds:** click the "Open in Colab" badge above.
 
-## The chain
+## What's in the box
 
-```
-Macro / IP                Electricity demand        Fuel switching
-(Eurostat IP, PMI)        (ENTSO-E load, weather)   (TTF gas / API2 coal / EUA)
-        │                          │                          │
-        └──────────┬───────────────┴──────────┬───────────────┘
-                   ▼                          ▼
-            Verified emissions          Marginal generator
-            (EUTL, annual + monthly     (gas vs coal → tCO2/MWh
-             power-sector proxies)       intensity changes)
-                   │                          │
-                   └─────────────┬────────────┘
-                                 ▼
-                        EUA compliance demand
-                                 │
-                 Auction calendar (EEX, weekly)
-                 MSR intake / TNAC (annual May 15)
-                                 │
-                                 ▼
-                        EUA front-month price
-                                 │
-                  Policy shocks (CBAM, ETS2, free
-                  allowances, REPowerEU sales)
-                                 │
-                                 ▼
-                   Tradable: ICE EUA futures,
-                            KRBN/GRN ETFs (proxy),
-                            calendar spreads,
-                            options on EUA
-```
+- **Historical EUA prices 2012-present** — daily primary auction clearing prices scraped from EEX archive
+- **Eurostat industrial production** — via SDMX bulk endpoint with JSON-stat fallback
+- **TNAC reference series 2016-2025** — verified values from every Commission Communication PDF, with primary-source citations
+- **MSR mechanism helpers** — thresholds, invalidation history, regime-context lookup for any TNAC value
+- **Feature engineering** — log returns, z-scores, momentum, realised volatility, IP YoY
+- **V1 baseline backtest** — long-only causal-chain strategy from the CS/RES/05 report
+- **Markov-switching regression** — two-regime model for EUA return dynamics (descriptive, not predictive)
+- **Standard plots** — equity curves, TNAC history with MSR thresholds, regime diagnostics
 
-## Why this is causally tradable
+### What's NOT in v0.1
 
-1. **Demand-side leading indicators publish first.** ENTSO-E publishes
-   day-ahead load 12 hours before the power market clears. Eurostat IP
-   releases ~45 days after month-end but with stable seasonality.
-   Weather forecasts run 10 days out. PMIs publish first business day
-   of the month. EUA only reflects all of this with a lag, because
-   compliance purchasing is *budgeted, not algorithmic*.
+Being explicit about scope. We removed features that failed our internal validation rather than shipping them broken:
 
-2. **Supply is calendar-locked.** EEX auctions every Mon-Thu morning,
-   ~14:00 CET clearing. MSR intake rate updates published May 15
-   annually. Free-allocation changes telegraphed in advance via
-   Commission press releases. Supply shocks come from *policy*, not
-   from auctions clearing high/low — and policy is observable.
+- **Monthly TNAC nowcast** — validated at 20%+ median error against Commission-published values, well outside a defensible confidence band. Planned for v0.2 once we wire in real EUTL per-year data.
+- **Compliance-buy timing signal** — tested empirically and does not persistently outperform naive strategies.
+- **Sector transmission model** — regressions of Rotterdam-cluster equities on EUA did not clear statistical significance.
 
-3. **The recession leg is the cleanest.** In every prior contraction
-   (2008-09, 2020 COVID, 2022 gas-crisis demand destruction) EUAs
-   sold off 30-60% with a 1-3 month lag to IP. The mechanism is
-   physical: factories that don't run don't emit.
+Choosing to ship less rather than ship broken is the design principle here.
 
-## Folder layout
-
-```
-Carbon_ETS/
-├── README.md                  ← this file
-├── MAURIZIO_HANDOFF.md        ← onboarding for the new contributor
-├── requirements.txt
-├── data/                      ← parquet outputs, gitignored
-├── plots/                     ← png outputs
-├── notebooks/                 ← exploration
-└── scripts/
-    ├── 01_fetch_prices.py     ← EUA proxy + fuels + macro tickers
-    ├── 02_fetch_emissions.py  ← IP, ENTSO-E load, weather, generation mix
-    ├── 03_build_dataset.py    ← merge all sources to daily panel
-    ├── 04_analyze_chain.py    ← lead-lag, regression, IRF, regime split
-    └── 05_backtest.py         ← signal → position → equity curve
-```
-
-## Run order
+## Install
 
 ```bash
-cd Carbon_ETS
-pip install -r requirements.txt
-python scripts/01_fetch_prices.py     --start 2018-01-01
-python scripts/02_fetch_emissions.py  --start 2018-01-01
-python scripts/03_build_dataset.py
-python scripts/04_analyze_chain.py
-python scripts/05_backtest.py
+pip install carbon-ets              # core (no yfinance)
+pip install carbon-ets[yfinance]    # with Yahoo Finance for equity/gas proxies
+pip install carbon-ets[all]         # everything including Jupyter
 ```
 
-Each script is independent and writes to `data/`. Re-running 05 doesn't
-require re-fetching upstream data.
+Or from source:
 
-## What's stubbed vs. what's real
+```bash
+git clone https://github.com/causalsystems/carbon-ets
+cd carbon-ets
+pip install -e .[all]
+```
 
-The `01_fetch_prices.py` and `02_fetch_emissions.py` scripts use **only
-free public data** (yfinance, ENTSO-E public API, Eurostat, Open-Meteo).
-Where the *real* feed is paid (ICE EUA settlement, S&P Global emissions),
-the scripts use the best free proxy and clearly flag the substitution.
+## Quickstart
 
-The `04_analyze_chain.py` and `05_backtest.py` scripts are intentionally
-**minimal but complete** — they run end-to-end and produce sensible
-outputs, but every model choice (lag windows, signal construction,
-position sizing) is a `TODO` for Maurizio to extend.
+```python
+from carbon_ets.data import build_full_panel
+from carbon_ets.features import engineer
+from carbon_ets.models import backtest_v1
+from carbon_ets.tnac import nowcast_monthly
 
-## Things for Maurizio to try
+panel = build_full_panel(start="2012-01-01")
+feats = engineer(panel)
+stats, equity = backtest_v1(feats)
+print(f"Sharpe = {stats['sharpe']:.2f}, CAGR = {stats['cagr']:+.1%}")
 
-Ranked by expected payoff.
+# Current TNAC nowcast — updated as new data arrives
+tnac = nowcast_monthly()
+print(f"Estimated TNAC ({tnac.as_of.date()}): {tnac.tnac_estimate:,.0f} allowances")
+```
 
-1. Replace KRBN proxy with real ICE EUA front-month (need a Refinitiv /
-   Bloomberg / ICE API key, or scrape EEX auction results daily — free).
-2. Add the EEX primary-auction clearing price as a separate series and
-   test whether auction-day premium/discount to secondary market
-   predicts next-day direction.
-3. Build the *compliance calendar* feature: April 30 surrender deadline,
-   May 15 MSR announcement, December position-squaring. Each is a
-   known seasonal that the current code does not exploit.
-4. Add a CBAM / ETS2 / policy-news classifier. The headline text is
-   on EU Commission press release feeds; sentiment + topic
-   classification on those is a strong feature.
-5. Cross-asset: EUA vs UKA spread (post-Brexit divergence), EUA vs
-   CCA (California), EUA vs RGGI — all tradable in ETF form.
+See `examples/quickstart.py` for the full end-to-end run.
 
-## Sister chains in this repo
+## What's honest about this
 
-| Folder | Driver | Tradable | Correlation w/ EUA expected |
-|---|---|---|---|
-| `EU_Power_Model/` | Weather → power price | DE/FR day-ahead | ~0.3 (shared weather) |
-| `Spark_Spread/` | Fuel switching → power | Clean spark/dark | ~0.5 (shared carbon) |
-| `TTF_Gas/` | Gas storage → TTF | TTF futures | ~0.4 (gas-to-EUA pass-through) |
+This toolkit does not claim to be a trading system. The backtest returns you see are:
 
-EUA is the natural overlay across all three.
+- **In-sample and window-dependent** — Sharpe 0.8-1.0 on 2015-2024 EUA settlement data, but not tested out-of-sample
+- **Sensitive to feature specification** — different regime interpretations arise from different feature sets
+- **Not corrected for realistic transaction costs, slippage, or execution frictions**
+
+The toolkit is designed for **research and policy analysis**, not live trading. If you want to trade EUA, you need paid data feeds, a proper execution stack, and independent validation.
+
+The core empirical finding — that the demand-side chain explains ~5% of monthly variance on average and up to 63% in specific windows — is reproducible from the pipeline and is the piece worth citing.
+
+## Architecture
+
+```
+carbon_ets/
+├── data.py         — EEX auction fetcher, Eurostat SDMX, panel builder
+├── features.py     — engineered features (returns, z-scores, momentum, vol)
+├── models.py       — backtest_v1, Markov-switching MS-2 wrapper
+├── tnac.py         — hardcoded TNAC series + monthly nowcast + validation
+├── plots.py        — equity curves, TNAC diagnostics
+└── __init__.py
+
+examples/
+└── quickstart.py   — end-to-end reproducibility
+
+pyproject.toml      — package config, dependencies
+```
+
+## Contributing
+
+Issues and pull requests welcome, especially:
+
+- **Data gap fills** — missing pre-2013 auction data, alternative EUA proxies (KEUA, CFI), or additional emissions data sources
+- **Feature ideas** — CBAM import volumes, ETS2 preparation data, sector-specific compliance proxies
+- **Method extensions** — regime-switching alternatives, structural VAR, natural experiments around MSR events
+- **Cross-market ports** — California CCA (CARB), UK ETS, RGGI applications of the same architecture
+
+## Citing
+
+If you use this in published work, please cite:
+
+> Causal Systems (2026). *Factories to carbon: a demand-side model of EU allowance prices.* CS/RES/05.
+> https://causalsystems.co/research/factories-to-carbon
+
+## License
+
+MIT. See LICENSE.
+
+## Contact
+
+hello@causalsystems.co
