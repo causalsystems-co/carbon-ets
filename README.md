@@ -112,7 +112,7 @@ Issues and pull requests welcome, especially:
 
 ## Authors
 
-- **Halis Yarim** — Causal Systems / Yarim Trade UG, Berlin
+- **Halis Yarim** — Boston
 - **Maurizio Raina** — Rotterdam
 
 ## Citing
