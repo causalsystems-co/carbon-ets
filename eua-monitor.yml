@@ -1,0 +1,53 @@
+name: EUA monitor
+
+on:
+  schedule:
+    - cron: "20 6 * * 1-5"    # weekday mornings, 06:20 UTC
+  workflow_dispatch:          # adds a manual "Run workflow" button
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out carbon-ets
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install numpy
+
+      - name: Build the monitor
+        run: python -m eua_monitor build
+
+      - name: Restyle to causalsystems.co design
+        run: python tools/restyle_cs.py site/index.html
+
+      - name: Commit refreshed site into this repo
+        run: |
+          git config user.name "eua-monitor-bot"
+          git config user.email "hello@causalsystems.co"
+          git add site/ data/cache/ 2>/dev/null || git add site/
+          git commit -m "monitor: scheduled rebuild" || echo "no changes to commit"
+          git push
+
+      - name: Deploy to the causalsystems.co share link
+        env:
+          SITE_TOKEN: ${{ secrets.SITE_PUSH_TOKEN }}
+          SHARE_PATH: ${{ secrets.SHARE_PATH }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${SITE_TOKEN}@github.com/halisy/causalsystems-site.git" site-repo
+          mkdir -p "site-repo/${SHARE_PATH}"
+          cp site/index.html "site-repo/${SHARE_PATH}/index.html"
+          cd site-repo
+          git config user.name "eua-monitor-bot"
+          git config user.email "hello@causalsystems.co"
+          git add "${SHARE_PATH}"
+          git commit -m "EUA monitor: scheduled rebuild" || { echo "no changes"; exit 0; }
+          git push
