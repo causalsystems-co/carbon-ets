@@ -2,8 +2,8 @@ name: EUA monitor
 
 on:
   schedule:
-    - cron: "20 6 * * 1-5"    # weekday mornings, 06:20 UTC
-  workflow_dispatch:          # adds a manual "Run workflow" button
+    - cron: "45 6 * * 1-5"    # weekday mornings, 06:45 UTC
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,30 +12,29 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out carbon-ets
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install numpy
-
-      - name: Build the monitor
-        run: python -m eua_monitor build
+      - name: Build dashboard
+        run: |
+          pip install numpy openpyxl
+          python -m eua_monitor build
 
       - name: Restyle to causalsystems.co design
         run: python tools/restyle_cs.py site/index.html
 
-      - name: Commit refreshed site into this repo
+      - name: Commit refreshed site and data cache
         run: |
           git config user.name "eua-monitor-bot"
-          git config user.email "hello@causalsystems.co"
-          git add site/ data/cache/ 2>/dev/null || git add site/
-          git commit -m "monitor: scheduled rebuild" || echo "no changes to commit"
-          git push
+          git config user.email "actions@users.noreply.github.com"
+          git add site eua_monitor/data/cache
+          if ! git diff --cached --quiet; then
+            git commit -m "eua-monitor: refresh dashboard [skip ci]"
+            git push
+          fi
 
       - name: Deploy to the causalsystems.co share link
         env:
@@ -47,7 +46,38 @@ jobs:
           cp site/index.html "site-repo/${SHARE_PATH}/index.html"
           cd site-repo
           git config user.name "eua-monitor-bot"
-          git config user.email "hello@causalsystems.co"
+          git config user.email "actions@users.noreply.github.com"
           git add "${SHARE_PATH}"
-          git commit -m "EUA monitor: scheduled rebuild" || { echo "no changes"; exit 0; }
-          git push
+          if git diff --cached --quiet; then
+            echo "no changes for the share page"
+          else
+            git commit -m "EUA monitor: scheduled rebuild"
+            git push
+          fi
+
+      # Optional email digest: configure SMTP_* secrets and DIGEST_TO to enable.
+      - name: Send digest if the state changed
+        if: hashFiles('site/digest.md') != ''
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+        run: |
+          if [ -z "$SMTP_SERVER" ]; then
+            echo "digest.md present but SMTP secrets not configured — skipping send"
+            exit 0
+          fi
+          python - <<'PY'
+          import os, smtplib
+          from email.message import EmailMessage
+          msg = EmailMessage()
+          msg["Subject"] = "EUA regime digest — state change"
+          msg["From"] = os.environ["SMTP_USER"]
+          msg["To"] = os.environ["DIGEST_TO"]
+          msg.set_content(open("site/digest.md").read())
+          with smtplib.SMTP_SSL(os.environ["SMTP_SERVER"], 465) as s:
+              s.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
+              s.send_message(msg)
+          print("digest sent")
+          PY
