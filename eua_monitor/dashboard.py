@@ -107,6 +107,42 @@ def build_payload(
     }
 
 
+
+def _subscribe_block() -> str:
+    """Fetch-based double-opt-in form when SUBSCRIBE_URL is set, mailto otherwise."""
+    if not getattr(config, "SUBSCRIBE_URL", ""):
+        mailto = html.escape(config.CONTACT_MAILTO, quote=True)
+        return f'      <a class="cta" href="{mailto}">Subscribe by email</a>'
+    url = config.SUBSCRIBE_URL.rstrip("/")
+    return f"""      <div class="subrow">
+        <input id="subemail" type="email" placeholder="you@organisation.org" aria-label="Your email address">
+        <button class="cta" type="button" id="subbtn">Subscribe</button>
+      </div>
+      <p class="submsg" id="submsg"></p>
+      <script>
+      document.getElementById('subbtn').addEventListener('click', async () => {{
+        const box = document.getElementById('submsg');
+        const email = document.getElementById('subemail').value.trim();
+        if (!email) {{ box.textContent = 'Enter an email address first.'; box.className = 'submsg err'; return; }}
+        box.textContent = 'Sending confirmation email…'; box.className = 'submsg';
+        try {{
+          const r = await fetch('{url}/subscribe', {{
+            method: 'POST', headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{email}})
+          }});
+          const d = await r.json();
+          if (d.ok) {{
+            box.textContent = 'Check your inbox and click the confirmation link (double opt-in).';
+            box.className = 'submsg ok';
+          }} else {{
+            box.textContent = d.error === 'invalid email' ? 'That does not look like a valid address.' : 'Something went wrong, try again later.';
+            box.className = 'submsg err';
+          }}
+        }} catch (e) {{ box.textContent = 'Network error, try again later.'; box.className = 'submsg err'; }}
+      }});
+      </script>"""
+
+
 def render(payload: dict) -> str:
     cur = payload["current"]
     meta = REGIME_META[cur["regime"]]
@@ -191,6 +227,7 @@ def render(payload: dict) -> str:
         .replace("__RESEARCH_URL__", config.RESEARCH_URL)
         .replace("__TOOLKIT_URL__", config.TOOLKIT_URL)
         .replace("__MAILTO__", html.escape(config.CONTACT_MAILTO, quote=True))
+        .replace("__SUBSCRIBE_BLOCK__", _subscribe_block())
     )
     return page
 
@@ -334,6 +371,13 @@ footer.method { margin-top: 34px; color: var(--ink-2); font-size: 13px; }
 footer.method h2 { font-size: 14px; color: var(--ink); margin: 0 0 6px; }
 footer.method p { max-width: 76ch; margin: 6px 0; }
 .legalese { color: var(--muted); font-size: 12px; }
+.subrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 10px; }
+.subrow input { flex: 1 1 240px; max-width: 340px; background: var(--page); color: var(--ink);
+  border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; font: 14px/1 inherit; }
+.subrow input:focus { outline: 2px solid var(--series); outline-offset: 1px; }
+.subrow .cta { cursor: pointer; border: 0; }
+.submsg { font-size: 13px; margin-top: 6px; }
+.submsg.ok { color: var(--good); } .submsg.err { color: var(--serious); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -429,7 +473,7 @@ footer.method p { max-width: 76ch; margin: 6px 0; }
       <p>A short email when the regime flips or TNAC crosses an MSR threshold
       &mdash; the two events this monitor exists to catch. No schedule, no noise:
       it only sends when the state changes.</p>
-      <a class="cta" href="__MAILTO__">Subscribe by email</a>
+__SUBSCRIBE_BLOCK__
       <p class="legalese">Or watch this page &mdash; it rebuilds daily from public data.</p>
     </div>
   </div>

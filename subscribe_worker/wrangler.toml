@@ -1,0 +1,17 @@
+name = "cs-digest"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Fill in after `npx wrangler kv namespace create SUBS`
+kv_namespaces = [
+  { binding = "SUBS", id = "PASTE_KV_NAMESPACE_ID_HERE" }
+]
+
+[vars]
+FROM_ADDR = "Causal Systems <digest@causalsystems.co>"
+BASE_URL = "https://cs-digest.YOUR-SUBDOMAIN.workers.dev"
+ALLOWED_ORIGIN = "https://causalsystems.co"
+
+# Secrets (set via CLI, never in this file):
+#   npx wrangler secret put RESEND_API_KEY
+#   npx wrangler secret put SEND_KEY

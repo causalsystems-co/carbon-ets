@@ -93,7 +93,11 @@ DASHBOARD_HTML = SITE_DIR / "index.html"
 DIGEST_MD = SITE_DIR / "digest.md"
 
 RESEARCH_URL = "https://causalsystems.co/research/factories-to-carbon"
-TOOLKIT_URL = "https://github.com/causalsystems/carbon-ets"
+TOOLKIT_URL = "https://github.com/causalsystems-co/carbon-ets"
+# Cloudflare Worker endpoint for digest subscriptions (subscribe_worker/).
+# Leave empty to fall back to the mailto link.
+SUBSCRIBE_URL = ""
+
 CONTACT_MAILTO = (
     "mailto:research@causalsystems.co?subject=EUA%20regime%20digest%20"
     "subscription&body=Please%20add%20me%20to%20the%20EUA%20regime%20digest."

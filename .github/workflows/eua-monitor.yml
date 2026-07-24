@@ -55,29 +55,19 @@ jobs:
             git push
           fi
 
-      # Optional email digest: configure SMTP_* secrets and DIGEST_TO to enable.
+      # Digest delivery via the Cloudflare Worker (subscribe_worker/).
+      # Configure DIGEST_SEND_URL + DIGEST_SEND_KEY secrets to enable.
       - name: Send digest if the state changed
         if: hashFiles('site/digest.md') != ''
         env:
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+          DIGEST_SEND_URL: ${{ secrets.DIGEST_SEND_URL }}
+          DIGEST_SEND_KEY: ${{ secrets.DIGEST_SEND_KEY }}
         run: |
-          if [ -z "$SMTP_SERVER" ]; then
-            echo "digest.md present but SMTP secrets not configured — skipping send"
+          if [ -z "$DIGEST_SEND_URL" ]; then
+            echo "digest.md present but DIGEST_SEND_URL not configured — skipping send"
             exit 0
           fi
-          python - <<'PY'
-          import os, smtplib
-          from email.message import EmailMessage
-          msg = EmailMessage()
-          msg["Subject"] = "EUA regime digest — state change"
-          msg["From"] = os.environ["SMTP_USER"]
-          msg["To"] = os.environ["DIGEST_TO"]
-          msg.set_content(open("site/digest.md").read())
-          with smtplib.SMTP_SSL(os.environ["SMTP_SERVER"], 465) as s:
-              s.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
-              s.send_message(msg)
-          print("digest sent")
-          PY
+          curl -sS -X POST "$DIGEST_SEND_URL/send" \
+            -H "Authorization: Bearer $DIGEST_SEND_KEY" \
+            -H "Content-Type: text/plain" \
+            --data-binary @site/digest.md

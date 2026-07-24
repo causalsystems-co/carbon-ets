@@ -89,28 +89,6 @@ s = s.replace(
     '<span style="font-weight:800">Causal Systems</span> <span>/ EUA Regime Monitor</span></div>',
 )
 
-# ---- subscribe row replaces the plain mailto CTA ----
-old_cta = (
-    '<a class="cta" href="mailto:research@causalsystems.co?subject=EUA%20regime%20digest%20'
-    'subscription&amp;body=Please%20add%20me%20to%20the%20EUA%20regime%20digest.">Subscribe by email</a>'
-)
-new_cta = """<div class="subrow">
-        <input id="subemail" type="email" placeholder="you@organisation.org" aria-label="Your email address">
-        <button class="cta" type="button" onclick="var e=document.getElementById('subemail').value.trim();location.href='mailto:hello@causalsystems.co?subject='+encodeURIComponent('EUA regime digest subscription')+'&body='+encodeURIComponent('Please add '+(e||'me')+' to the EUA regime digest.');">Subscribe</button>
-      </div>"""
-s = s.replace(old_cta, new_cta)
-s = s.replace(
-    ".legalese { color: var(--muted); font-size: 12px; }",
-    """.legalese { color: var(--muted); font-size: 12px; }
-.subrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 10px; }
-.subrow input { flex: 1 1 240px; max-width: 340px; background: var(--page); color: var(--ink);
-  border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px;
-  font: 14px/1 "Archivo", system-ui, sans-serif; }
-.subrow input:focus { outline: 2px solid var(--series); outline-offset: 1px; border-color: transparent; }
-.subrow .cta { cursor: pointer; }""",
-    1,
-)
-
 # ---- house style: no em dashes ----
 s = s.replace("&mdash;", "·").replace("—", " · ").replace(" ·  · ", " · ")
 
